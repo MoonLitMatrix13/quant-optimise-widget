@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantisation Precision Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+
+  <main>
+
+    <header>
+      <div class="header-eyebrow">Neural Network Internals</div>
+      <h1>Quantisation<br><em>Precision Explorer</em></h1>
+      <p class="header-sub">Adjust a weight value and watch how FP32, INT8, and INT4 representations diverge — with live memory and error statistics.</p>
+    </header>
+
+    <section class="controls-section">
+
+      <div class="control-block">
+        <div class="control-meta">
+          <label for="wslider">Weight Value</label>
+          <output id="wval" class="mono">0.318</output>
+        </div>
+        <div class="slider-track-wrap">
+          <input type="range" min="-2" max="2" step="0.001" value="0.318" id="wslider" class="slider" />
+          <div class="slider-fill" id="wfill"></div>
+          <div class="tick-marks" id="wticks" aria-hidden="true"></div>
+        </div>
+        <div class="range-labels"><span>−2.000</span><span>0</span><span>+2.000</span></div>
+      </div>
+
+      <div class="control-block">
+        <div class="control-meta">
+          <label for="mslider">Model Parameters</label>
+          <output id="mval" class="mono">7B</output>
+        </div>
+        <div class="slider-track-wrap">
+          <input type="range" min="1" max="70" step="1" value="7" id="mslider" class="slider" />
+          <div class="slider-fill" id="mfill"></div>
+          <div class="tick-marks" id="mticks" aria-hidden="true"></div>
+        </div>
+        <div class="range-labels"><span>1B</span><span>35B</span><span>70B</span></div>
+      </div>
+
+    </section>
+
+    <section class="cards-section" id="cards" aria-live="polite"></section>
+
+    <section class="memory-section">
+      <div class="section-header">
+        <span class="section-label">Memory Footprint</span>
+        <span class="section-sub" id="mem-subtitle">7B parameter model</span>
+      </div>
+      <div class="bar-grid" id="bars"></div>
+    </section>
+
+    <div class="insight-box" id="insight" role="status"></div>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
