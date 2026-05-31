@@ -1,71 +1,265 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quantisation Precision Explorer</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Quantisation Precision Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0d10;--bg2:#11141a;--bg3:#181c24;
+  --border:rgba(255,255,255,.07);--border-mid:rgba(255,255,255,.13);
+  --text:#e8ecf0;--text2:#8a929e;--text3:#4e5562;
+  --accent:#3ecfb2;--accent-dim:rgba(62,207,178,.14);--accent-glow:rgba(62,207,178,.3);
+  --fp32:#7a6fff;--int8:#3ecfb2;--int4:#f0a040;
+  --good:#3ecfb2;--warn:#f0a040;--bad:#e05a5a;
+  --mono:'DM Mono',monospace;--display:'Syne',sans-serif;
+  --r:12px;--rl:18px;--ease:cubic-bezier(.22,.68,0,1.1);
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--display);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* Background */
+.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+  background-size:52px 52px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 100%);
+  -webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 100%)}
+.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 60% 40% at 70% 20%,rgba(62,207,178,.055) 0%,transparent 70%),
+             radial-gradient(ellipse 40% 50% at 15% 80%,rgba(122,111,255,.055) 0%,transparent 70%)}
+
+/* Layout */
+main{position:relative;z-index:1;max-width:860px;margin:0 auto;
+  padding:clamp(2.5rem,6vw,5rem) clamp(1.25rem,4vw,2rem) 4rem;
+  display:flex;flex-direction:column;gap:2.5rem}
+
+/* Header */
+header{max-width:580px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:'';display:inline-block;width:20px;height:1px;background:var(--accent);opacity:.7}
+h1{font-size:clamp(2.2rem,5vw,3.6rem);font-weight:800;line-height:1.05;letter-spacing:-.03em;margin-bottom:1.1rem}
+h1 em{font-style:normal;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.3)}
+.sub{font-size:15px;line-height:1.65;color:var(--text2);font-weight:400;max-width:460px}
+
+/* Controls panel */
+.controls{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.5rem 1.75rem 1.75rem;display:flex;flex-direction:column;gap:1.5rem}
+.ctrl{display:flex;flex-direction:column;gap:.55rem}
+.ctrl-meta{display:flex;justify-content:space-between;align-items:baseline}
+label{font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text2)}
+output{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent);letter-spacing:.03em}
+
+/* Slider */
+.track-wrap{position:relative;height:24px;display:flex;align-items:center}
+.track-wrap::before{content:'';position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:3px;border-radius:2px;background:var(--bg3);z-index:0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:transparent;outline:none;cursor:pointer;position:relative;z-index:3}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--bg);border:2px solid var(--accent);box-shadow:0 0 0 3px var(--accent-dim),0 0 14px var(--accent-glow);cursor:grab;transition:transform .15s,box-shadow .15s}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--bg);border:2px solid var(--accent);box-shadow:0 0 0 3px var(--accent-dim),0 0 14px var(--accent-glow);cursor:grab;transition:transform .15s}
+input[type=range]:active::-webkit-slider-thumb{cursor:grabbing;transform:scale(1.2);box-shadow:0 0 0 5px var(--accent-dim),0 0 22px var(--accent-glow)}
+.sfill{position:absolute;left:0;top:50%;transform:translateY(-50%);height:3px;border-radius:2px;background:linear-gradient(90deg,var(--fp32),var(--accent));pointer-events:none;z-index:1;transition:width .04s}
+.ticks{position:absolute;left:0;right:0;top:calc(50% + 11px);height:4px;pointer-events:none;z-index:0}
+.tick{position:absolute;width:1px;height:4px;background:var(--border-mid);transform:translateX(-50%)}
+.rlabels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.02em;padding:0 1px}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.25rem 1.25rem 1rem;display:flex;flex-direction:column;border-top-width:2px;animation:cardIn .45s var(--ease) both;transition:transform .25s var(--ease),box-shadow .25s}
+.card:hover{transform:translateY(-3px)}
+.card[data-f="FP32"]{border-top-color:var(--fp32)}.card[data-f="FP32"]:hover{box-shadow:0 8px 32px rgba(122,111,255,.13)}
+.card[data-f="INT8"]{border-top-color:var(--int8)}.card[data-f="INT8"]:hover{box-shadow:0 8px 32px rgba(62,207,178,.13)}
+.card[data-f="INT4"]{border-top-color:var(--int4)}.card[data-f="INT4"]:hover{box-shadow:0 8px 32px rgba(240,160,64,.13)}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;margin-bottom:.85rem}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.cval{font-family:var(--mono);font-size:1.55rem;font-weight:400;letter-spacing:-.02em;margin-bottom:.25rem;transition:color .2s}
+.cbits{font-family:var(--mono);font-size:10px;color:var(--text3);word-break:break-all;line-height:1.6;margin-bottom:1rem;min-height:2.8em}
+.cdiv{height:1px;background:var(--border);margin-bottom:.75rem}
+.cstat{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0}
+.cstat+.cstat{border-top:1px solid rgba(255,255,255,.04)}
+.ckey{font-size:11px;color:var(--text3)}
+.cstatv{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text)}
+.cstatv.good{color:var(--good)}.cstatv.warn{color:var(--warn)}.cstatv.bad{color:var(--bad)}
+
+/* Memory */
+.memsec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.5rem 1.75rem}
+.sechdr{display:flex;align-items:baseline;gap:10px;margin-bottom:1.25rem}
+.seclabel{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)}
+.secsub{font-family:var(--mono);font-size:11px;color:var(--text3)}
+.bars{display:flex;flex-direction:column;gap:.85rem}
+.brow{display:grid;grid-template-columns:44px 1fr 68px;align-items:center;gap:12px}
+.bname{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text2);letter-spacing:.06em}
+.btrack{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.bfill{height:100%;border-radius:4px;transition:width .5s var(--ease);position:relative}
+.bfill::after{content:'';position:absolute;top:0;right:0;width:3px;height:100%;background:rgba(255,255,255,.3);border-radius:0 4px 4px 0}
+.bgb{font-family:var(--mono);font-size:11px;color:var(--text2);text-align:right}
+
+/* Insight */
+.insight{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--r);padding:1rem 1.25rem;font-size:13.5px;line-height:1.7;color:var(--text2);transition:border-left-color .3s}
+.insight strong{color:var(--text);font-weight:600}
+
+/* Responsive */
+@media(max-width:620px){.cards{grid-template-columns:1fr}h1{font-size:2rem}}
+@media(max-width:400px){.controls,.memsec{padding:1.25rem}}
+::selection{background:var(--accent-dim);color:var(--accent)}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:3px}
+</style>
 </head>
 <body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<main>
 
-  <div class="bg-grid"></div>
-  <div class="bg-glow"></div>
+  <header>
+    <div class="eyebrow">Neural Network Internals</div>
+    <h1>Quantisation<br><em>Precision Explorer</em></h1>
+    <p class="sub">Adjust a weight value and watch how FP32, INT8, and INT4 representations diverge — with live memory and error statistics.</p>
+  </header>
 
-  <main>
-
-    <header>
-      <div class="header-eyebrow">Neural Network Internals</div>
-      <h1>Quantisation<br><em>Precision Explorer</em></h1>
-      <p class="header-sub">Adjust a weight value and watch how FP32, INT8, and INT4 representations diverge — with live memory and error statistics.</p>
-    </header>
-
-    <section class="controls-section">
-
-      <div class="control-block">
-        <div class="control-meta">
-          <label for="wslider">Weight Value</label>
-          <output id="wval" class="mono">0.318</output>
-        </div>
-        <div class="slider-track-wrap">
-          <input type="range" min="-2" max="2" step="0.001" value="0.318" id="wslider" class="slider" />
-          <div class="slider-fill" id="wfill"></div>
-          <div class="tick-marks" id="wticks" aria-hidden="true"></div>
-        </div>
-        <div class="range-labels"><span>−2.000</span><span>0</span><span>+2.000</span></div>
+  <section class="controls">
+    <div class="ctrl">
+      <div class="ctrl-meta">
+        <label for="ws">Weight Value</label>
+        <output id="wval">0.318</output>
       </div>
-
-      <div class="control-block">
-        <div class="control-meta">
-          <label for="mslider">Model Parameters</label>
-          <output id="mval" class="mono">7B</output>
-        </div>
-        <div class="slider-track-wrap">
-          <input type="range" min="1" max="70" step="1" value="7" id="mslider" class="slider" />
-          <div class="slider-fill" id="mfill"></div>
-          <div class="tick-marks" id="mticks" aria-hidden="true"></div>
-        </div>
-        <div class="range-labels"><span>1B</span><span>35B</span><span>70B</span></div>
+      <div class="track-wrap">
+        <input type="range" id="ws" min="-2" max="2" step="0.001" value="0.318"/>
+        <div class="sfill" id="wf"></div>
+        <div class="ticks" id="wt" aria-hidden="true"></div>
       </div>
-
-    </section>
-
-    <section class="cards-section" id="cards" aria-live="polite"></section>
-
-    <section class="memory-section">
-      <div class="section-header">
-        <span class="section-label">Memory Footprint</span>
-        <span class="section-sub" id="mem-subtitle">7B parameter model</span>
+      <div class="rlabels"><span>−2.000</span><span>0</span><span>+2.000</span></div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-meta">
+        <label for="ms">Model Parameters</label>
+        <output id="mval">7B</output>
       </div>
-      <div class="bar-grid" id="bars"></div>
-    </section>
+      <div class="track-wrap">
+        <input type="range" id="ms" min="1" max="70" step="1" value="7"/>
+        <div class="sfill" id="mf"></div>
+        <div class="ticks" id="mt" aria-hidden="true"></div>
+      </div>
+      <div class="rlabels"><span>1B</span><span>35B</span><span>70B</span></div>
+    </div>
+  </section>
 
-    <div class="insight-box" id="insight" role="status"></div>
+  <section class="cards" id="cards" aria-live="polite"></section>
 
-  </main>
+  <section class="memsec">
+    <div class="sechdr">
+      <span class="seclabel">Memory Footprint</span>
+      <span class="secsub" id="msub">7B parameter model</span>
+    </div>
+    <div class="bars" id="bars"></div>
+  </section>
 
-  <script src="app.js"></script>
+  <div class="insight" id="insight" role="status"></div>
+
+</main>
+<script>
+// ── Math ──────────────────────────────────────────────────
+function qFP32(v){return parseFloat(v.toFixed(7))}
+function qINT8(v){const s=255/4,q=Math.round(v*s),c=Math.max(-128,Math.min(127,q));return parseFloat((c/s).toFixed(4))}
+function qINT4(v){const s=15/4,q=Math.round(v*s),c=Math.max(-8,Math.min(7,q));return parseFloat((c/s).toFixed(3))}
+
+function toBin(v,bits){
+  if(bits===32){const b=new ArrayBuffer(4);new DataView(b).setFloat32(0,v);return Array.from(new Uint8Array(b)).map(x=>x.toString(2).padStart(8,'0')).join(' ').slice(0,26)+'…'}
+  if(bits===8){const n=Math.max(0,Math.min(255,Math.round((v+2)/4*255)));return n.toString(2).padStart(8,'0')}
+  const n=Math.max(0,Math.min(15,Math.round((v+2)/4*15)));return n.toString(2).padStart(4,'0')
+}
+function mem(p,b){return parseFloat((p*1e9*b/8/1e9).toFixed(1))}
+function ec(e){return e<0.005?'good':e<0.05?'warn':'bad'}
+
+// ── Helpers ───────────────────────────────────────────────
+function setFill(slider,fill){
+  const pct=(parseFloat(slider.value)-parseFloat(slider.min))/(parseFloat(slider.max)-parseFloat(slider.min))*100;
+  fill.style.width=pct+'%';
+}
+function buildTicks(id,n){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.innerHTML='';
+  for(let i=0;i<=n;i++){const t=document.createElement('span');t.className='tick';t.style.left=(i/n*100)+'%';el.appendChild(t)}
+}
+
+// ── Render cards ──────────────────────────────────────────
+const FMT=[
+  {id:'FP32',desc:'32-bit float',bits:32,col:'var(--fp32)',prec:6},
+  {id:'INT8',desc:'8-bit integer',bits:8,col:'var(--int8)',prec:4},
+  {id:'INT4',desc:'4-bit integer',bits:4,col:'var(--int4)',prec:3},
+];
+
+function renderCards(fp,i8,i4,p,e8,e4){
+  const el=document.getElementById('cards');
+  if(!el)return;
+  const vals=[fp,i8,i4],errs=[0,e8,e4];
+  el.innerHTML=FMT.map((f,i)=>{
+    const err=errs[i],cls=err===0?'good':ec(err),errTxt=err===0?'none':err.toFixed(4);
+    return `<article class="card" data-f="${f.id}" style="animation-delay:${i*70}ms">
+      <div class="badge" style="color:${f.col}"><span class="dot" style="background:${f.col}"></span>${f.id} · ${f.desc}</div>
+      <div class="cval">${vals[i].toFixed(f.prec)}</div>
+      <div class="cbits">${toBin(vals[i],f.bits)}</div>
+      <div class="cdiv"></div>
+      <div class="cstat"><span class="ckey">Bits per weight</span><span class="cstatv">${f.bits}</span></div>
+      <div class="cstat"><span class="ckey">Error vs FP32</span><span class="cstatv ${cls}">${errTxt}</span></div>
+      <div class="cstat"><span class="ckey">Model memory</span><span class="cstatv">${mem(p,f.bits)} GB</span></div>
+    </article>`;
+  }).join('');
+}
+
+// ── Render bars ───────────────────────────────────────────
+function renderBars(p){
+  const el=document.getElementById('bars');
+  if(!el)return;
+  const base=mem(p,32);
+  el.innerHTML=[
+    {l:'FP32',gb:base,c:'var(--fp32)'},
+    {l:'INT8',gb:mem(p,8),c:'var(--int8)'},
+    {l:'INT4',gb:mem(p,4),c:'var(--int4)'},
+  ].map(b=>`<div class="brow">
+    <span class="bname">${b.l}</span>
+    <div class="btrack"><div class="bfill" style="width:${Math.round(b.gb/base*100)}%;background:${b.c}"></div></div>
+    <span class="bgb">${b.gb} GB</span>
+  </div>`).join('');
+}
+
+// ── Render insight ────────────────────────────────────────
+function renderInsight(v,e8,e4,p){
+  const el=document.getElementById('insight');
+  if(!el)return;
+  const b=mem(p,32),b4=mem(p,4),b8=mem(p,8);
+  const s4=Math.round((1-b4/b)*100),s8=Math.round((1-b8/b)*100);
+  el.innerHTML=e4<0.05
+    ?`At <strong>${v.toFixed(3)}</strong>, INT4 error is tiny (${e4.toFixed(4)}). For a <strong>${p}B</strong>-parameter model, INT4 saves <strong>${s4}%</strong> memory — ${(b-b4).toFixed(0)} GB back. Most real weights cluster near zero, so average error is well below worst-case.`
+    :`This weight (<strong>${v.toFixed(3)}</strong>) sits near the range boundary, so INT4 rounding is noticeable (error: <strong>${e4.toFixed(4)}</strong>). INT8 holds it to ${e8.toFixed(4)} — often a better tradeoff, while still saving <strong>${s8}%</strong> vs FP32.`;
+  el.style.borderLeftColor=e4<0.05?'var(--accent)':'var(--warn)';
+}
+
+// ── Update ────────────────────────────────────────────────
+function update(){
+  const ws=document.getElementById('ws'),ms=document.getElementById('ms');
+  const v=parseFloat(ws.value),p=parseInt(ms.value,10);
+  document.getElementById('wval').textContent=v.toFixed(3);
+  document.getElementById('mval').textContent=p+'B';
+  document.getElementById('msub').textContent=p+'B parameter model';
+  setFill(ws,document.getElementById('wf'));
+  setFill(ms,document.getElementById('mf'));
+  const fp=qFP32(v),i8=qINT8(v),i4=qINT4(v);
+  renderCards(fp,i8,i4,p,Math.abs(fp-i8),Math.abs(fp-i4));
+  renderBars(p);
+  renderInsight(v,Math.abs(fp-i8),Math.abs(fp-i4),p);
+}
+
+// ── Init ──────────────────────────────────────────────────
+(function init(){
+  buildTicks('wt',8);
+  buildTicks('mt',6);
+  document.getElementById('ws').addEventListener('input',update);
+  document.getElementById('ms').addEventListener('input',update);
+  update();
+})();
+</script>
 </body>
 </html>
